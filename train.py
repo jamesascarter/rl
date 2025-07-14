@@ -121,8 +121,29 @@ def train(
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
     # Setup training
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"CUDA available: {torch.cuda.is_available()}")
+    print(f"CUDA device count: {torch.cuda.device_count()}")
+    
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")  # Explicitly use GPU 0
+        print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+        print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+    else:
+        device = torch.device("cpu")
+        print("Using CPU - this will be very slow!")
+    
     model.to(device)
+    
+    # Verify model is on correct device
+    print(f"Model device: {next(model.parameters()).device}")
+    
+    # Test GPU computation
+    if torch.cuda.is_available():
+        test_tensor = torch.randn(2, 2).to(device)
+        result = test_tensor @ test_tensor.T
+        print(f"GPU test successful: {result.shape}")
+    else:
+        print("Running on CPU - training will be very slow!")
     
     # Optimizer (only for trainable parameters)
     optimizer = torch.optim.AdamW(
