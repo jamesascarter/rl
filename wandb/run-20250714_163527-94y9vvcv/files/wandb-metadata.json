@@ -1,0 +1,40 @@
+{
+  "os":  "macOS-14.6.1-arm64-arm-64bit",
+  "python":  "CPython 3.9.21",
+  "startedAt":  "2025-07-14T15:35:27.451893Z",
+  "program":  "/Users/jamescarter/codes/rl/train.py",
+  "codePath":  "train.py",
+  "email":  "jamesascarter@googlemail.com",
+  "root":  "/Users/jamescarter/codes/rl",
+  "host":  "Jamess-MacBook-Pro-2.local",
+  "executable":  "/Users/jamescarter/miniforge3/bin/python",
+  "codePathLocal":  "train.py",
+  "cpu_count":  8,
+  "cpu_count_logical":  8,
+  "disk":  {
+    "/":  {
+      "total":  "494384795648",
+      "used":  "268903907328"
+    },
+    "/System/Volumes/Data":  {
+      "total":  "494384795648",
+      "used":  "268903907328"
+    }
+  },
+  "memory":  {
+    "total":  "17179869184"
+  },
+  "cpu":  {
+    "count":  8,
+    "countLogical":  8
+  },
+  "apple":  {
+    "name":  "Apple M1",
+    "ecpuCores":  4,
+    "pcpuCores":  4,
+    "gpuCores":  8,
+    "memoryGb":  16,
+    "swapTotalBytes":  "9663676416",
+    "ramTotalBytes":  "17179869184"
+  }
+}
