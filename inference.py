@@ -68,4 +68,6 @@ if __name__ == "__main__":
     """
     
     summary = generate_summary(text)
+    print(f"Prompt: {text}")
+    print("--------------------------------")
     print(f"Summary: {summary}") 
