@@ -124,8 +124,8 @@ def train(
     print()
     
     # Create train/validation datasets
-    train_dataset = dataset["train"].select(range(min(1000, len(dataset["train"]))))
-    val_dataset = dataset["validation"].select(range(min(100, len(dataset["validation"]))))
+    train_dataset = dataset["train"]
+    val_dataset = dataset["validation"]
     
     # Create PyTorch datasets
     train_dataset = TLDRDataset(train_dataset, model.tokenizer, max_length)
