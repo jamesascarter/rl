@@ -61,7 +61,7 @@ class TLDRDataset(Dataset):
         if (labels == -100).all():
             print(f"Warning: All labels are -100 for sample {idx}")
             print(f"Prompt: {prompt}")
-            print(f"Full text: {prompt + example['summary']}")
+            print(f"Full text: {prompt + example['completion']}")
         
         return {
             "input_ids": inputs["input_ids"].squeeze(),
