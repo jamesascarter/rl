@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import LoraConfig, get_peft_model, TaskType
+from peft import LoraConfig, get_peft_model, TaskType, PeftModel
 
 
 class QwenSftModel(nn.Module):
@@ -96,7 +96,7 @@ class QwenSftModel(nn.Module):
         Args:
             path: Directory containing LoRA weights
         """
-        self.model = self.model.from_pretrained(path)
+        self.model = PeftModel.from_pretrained(self.model, path)  # Fixed this line
         print(f"LoRA weights loaded from {path}")
     
     def get_trainable_parameters(self):
