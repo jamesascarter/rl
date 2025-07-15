@@ -27,12 +27,6 @@ class TLDRDataset(Dataset):
     def __getitem__(self, idx):
         example = self.dataset[idx]
         
-        # Debug: Check for empty or problematic data
-        if not example['prompt'] or not example['completion']:
-            print(f"Warning: Empty prompt or completion at index {idx}")
-            print(f"Prompt: '{example['prompt']}'")
-            print(f"Completion: '{example['completion']}'")
-        
         # Format prompt
         prompt = f"Summarize the following text:\n\n{example['prompt']}\n\nSummary:"
         
@@ -61,28 +55,8 @@ class TLDRDataset(Dataset):
         # Get the actual prompt length (without padding)
         prompt_length = prompt_tokens["input_ids"].shape[1]
         
-        # Debug: Print tokenization info
-        if idx < 3:  # Only for first few examples
-            print(f"Sample {idx}:")
-            print(f"  Prompt: '{prompt[:100]}...'")
-            print(f"  Completion: '{example['completion'][:50]}...'")
-            print(f"  Prompt tokens: {prompt_length}")
-            print(f"  Total tokens: {inputs['input_ids'].shape[1]}")
-            print(f"  Will mask tokens 0 to {prompt_length-1}")
-        
         # Mask prompt tokens with -100
         labels[:, :prompt_length] = -100
-        
-        # Debug: Check for all -100 labels
-        valid_labels = (labels != -100).sum()
-        if valid_labels == 0:
-            print(f"ERROR: No valid labels for sample {idx}")
-            print(f"  Prompt length: {prompt_length}")
-            print(f"  Total length: {labels.shape[1]}")
-            print(f"  Prompt: '{prompt[:100]}...'")
-            print(f"  Completion: '{example['completion'][:50]}...'")
-        elif idx < 3:
-            print(f"  Valid labels: {valid_labels}")
         
         return {
             "input_ids": inputs["input_ids"].squeeze(),
@@ -160,15 +134,6 @@ def train(
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    
-    # Debug: Check first batch
-    print("Debug: Checking first batch...")
-    first_batch = next(iter(train_loader))
-    print(f"First batch keys: {first_batch.keys()}")
-    print(f"Input IDs shape: {first_batch['input_ids'].shape}")
-    print(f"Labels shape: {first_batch['labels'].shape}")
-    print(f"Input IDs sample: {first_batch['input_ids'][0][:10]}")
-    print(f"Labels sample: {first_batch['labels'][0][:10]}")
     
     # Check for valid labels (not all -100)
     valid_labels = (first_batch['labels'] != -100).sum()
