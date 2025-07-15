@@ -16,8 +16,8 @@ class QwenInference:
         
         # Load model
         if model_path:
-            self.model = QwenSftModel()
-            self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+            self.model = QwenSftModel(model_name)
+            self.model.load_lora_weights(model_path)  # Use the existing method
             print(f"Loaded fine-tuned model from {model_path}")
         else:
             self.model = QwenSftModel(model_name)
@@ -168,7 +168,7 @@ class QwenInference:
 # Example usage
 if __name__ == "__main__":
     # Initialize inference
-    inference = QwenInference()
+    inference = QwenInference(model_path="./lora-output/best-model")
     
     # Test text generation
     prompt = "The future of artificial intelligence is"
