@@ -171,7 +171,9 @@ if __name__ == "__main__":
     inference = QwenInference(model_path="./lora-output/best-model")
     
     # Test text generation
-    prompt = "The future of artificial intelligence is"
+    prompt = "SUBREDDIT: r/relationships TITLE: The girl [26 F] I [22 M] have been seeing for a month didn't respond to me at all yesterday while hanging out with a friend [~30? M]. POST: She gets terrible service while at her house, but I texted her 3 times yesterday, 4-5 hours apart. She didn't call me until early this morning and left a voicemail that she was busy all day with a friend who showed up out of the blue. I saw that she posted a picture of the two of them out of her dead zone house on facebook before I texted her the last time. I don't mind that she hangs out with friends, and I know it's pretty early in the relationship, but am I wrong to be a little annoyed that she didn't respond until 24 hours after my first text?
+
+TL;DR:"
     generated = inference.generate_text(prompt, max_length=50)
     print(f"Prompt: {prompt}")
     print(f"Generated: {generated}")
@@ -179,9 +181,7 @@ if __name__ == "__main__":
     
     # Test summarization
     text = """
-    Artificial intelligence (AI) is a branch of computer science that aims to create intelligent machines that work and react like humans. 
-    Some of the activities computers with artificial intelligence are designed for include speech recognition, learning, planning, and problem solving. 
-    AI has been used in various applications such as virtual assistants, autonomous vehicles, medical diagnosis, and game playing.
+    Girl I'm seeing didn't respond to my texts while hanging out with a friend, what should I do, if anything?
     """
     summary = inference.generate_summary(text)
     print(f"Original text: {text.strip()}")
