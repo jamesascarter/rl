@@ -27,6 +27,12 @@ class TLDRDataset(Dataset):
     def __getitem__(self, idx):
         example = self.dataset[idx]
         
+        # Debug: Check for empty or problematic data
+        if not example['text'] or not example['summary']:
+            print(f"Warning: Empty text or summary at index {idx}")
+            print(f"Text: '{example['text']}'")
+            print(f"Summary: '{example['summary']}'")
+        
         # Format prompt
         prompt = f"Summarize the following text:\n\n{example['prompt']}\n\nSummary:"
         
@@ -50,6 +56,12 @@ class TLDRDataset(Dataset):
         )
         prompt_length = prompt_tokens["input_ids"].shape[1]
         labels[:, :prompt_length] = -100
+        
+        # Debug: Check for all -100 labels
+        if (labels == -100).all():
+            print(f"Warning: All labels are -100 for sample {idx}")
+            print(f"Prompt: {prompt}")
+            print(f"Full text: {prompt + example['summary']}")
         
         return {
             "input_ids": inputs["input_ids"].squeeze(),
@@ -120,6 +132,23 @@ def train(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
+    # Debug: Check first batch
+    print("Debug: Checking first batch...")
+    first_batch = next(iter(train_loader))
+    print(f"First batch keys: {first_batch.keys()}")
+    print(f"Input IDs shape: {first_batch['input_ids'].shape}")
+    print(f"Labels shape: {first_batch['labels'].shape}")
+    print(f"Input IDs sample: {first_batch['input_ids'][0][:10]}")
+    print(f"Labels sample: {first_batch['labels'][0][:10]}")
+    
+    # Check for valid labels (not all -100)
+    valid_labels = (first_batch['labels'] != -100).sum()
+    print(f"Valid labels in first batch: {valid_labels}")
+    
+    if valid_labels == 0:
+        print("ERROR: No valid labels found! This will cause NaN loss.")
+        return None
+    
     # Setup training
     print(f"CUDA available: {torch.cuda.is_available()}")
     print(f"CUDA device count: {torch.cuda.device_count()}")
@@ -137,6 +166,21 @@ def train(
     # Verify model is on correct device
     print(f"Model device: {next(model.parameters()).device}")
     
+    # Debug: Check model parameters
+    print("Debug: Checking model parameters...")
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,}")
+    print(f"Trainable percentage: {100 * trainable_params / total_params:.2f}%")
+    
+    # Check for NaN in model parameters
+    for name, param in model.named_parameters():
+        if torch.isnan(param).any():
+            print(f"Warning: NaN found in parameter {name}")
+        if torch.isinf(param).any():
+            print(f"Warning: Inf found in parameter {name}")
+    
     # Test GPU computation
     if torch.cuda.is_available():
         test_tensor = torch.randn(2, 2).to(device)
@@ -144,6 +188,29 @@ def train(
         print(f"GPU test successful: {result.shape}")
     else:
         print("Running on CPU - training will be very slow!")
+    
+    # Test model forward pass
+    print("Debug: Testing model forward pass...")
+    model.eval()
+    with torch.no_grad():
+        test_input_ids = first_batch['input_ids'].to(device)
+        test_labels = first_batch['labels'].to(device)
+        
+        try:
+            test_output = model(input_ids=test_input_ids, labels=test_labels)
+            test_loss = test_output.loss
+            print(f"Test loss: {test_loss.item()}")
+            
+            if torch.isnan(test_loss) or torch.isinf(test_loss):
+                print("ERROR: Model produces NaN/Inf loss on test batch!")
+                return None
+            else:
+                print("Model forward pass successful!")
+        except Exception as e:
+            print(f"ERROR: Model forward pass failed: {e}")
+            return None
+    
+    model.train()
     
     # Optimizer (only for trainable parameters)
     optimizer = torch.optim.AdamW(
