@@ -29,16 +29,17 @@ class TLDRDataset(Dataset):
         
         # Debug: Check for empty or problematic data
         if not example['prompt'] or not example['completion']:
-            print(f"Warning: Empty text or summary at index {idx}")
-            print(f"Text: '{example['prompt']}'")
-            print(f"Summary: '{example['completion']}'")
+            print(f"Warning: Empty prompt or completion at index {idx}")
+            print(f"Prompt: '{example['prompt']}'")
+            print(f"Completion: '{example['completion']}'")
         
         # Format prompt
         prompt = f"Summarize the following text:\n\n{example['prompt']}\n\nSummary:"
         
-        # Tokenize
+        # Tokenize the full text (prompt + completion)
+        full_text = prompt + example['completion']
         inputs = self.tokenizer(
-            prompt + example['completion'],
+            full_text,
             truncation=True,
             max_length=self.max_length,
             padding="max_length",
@@ -47,21 +48,41 @@ class TLDRDataset(Dataset):
         
         # Create labels (mask prompt tokens with -100)
         labels = inputs["input_ids"].clone()
+        
+        # Tokenize just the prompt to get its length
         prompt_tokens = self.tokenizer(
             prompt,
             truncation=True,
             max_length=self.max_length,
-            padding="max_length",
+            padding=False,  # Don't pad the prompt
             return_tensors="pt"
         )
+        
+        # Get the actual prompt length (without padding)
         prompt_length = prompt_tokens["input_ids"].shape[1]
+        
+        # Debug: Print tokenization info
+        if idx < 3:  # Only for first few examples
+            print(f"Sample {idx}:")
+            print(f"  Prompt: '{prompt[:100]}...'")
+            print(f"  Completion: '{example['completion'][:50]}...'")
+            print(f"  Prompt tokens: {prompt_length}")
+            print(f"  Total tokens: {inputs['input_ids'].shape[1]}")
+            print(f"  Will mask tokens 0 to {prompt_length-1}")
+        
+        # Mask prompt tokens with -100
         labels[:, :prompt_length] = -100
         
         # Debug: Check for all -100 labels
-        if (labels == -100).all():
-            print(f"Warning: All labels are -100 for sample {idx}")
-            print(f"Prompt: {prompt}")
-            print(f"Full text: {prompt + example['completion']}")
+        valid_labels = (labels != -100).sum()
+        if valid_labels == 0:
+            print(f"ERROR: No valid labels for sample {idx}")
+            print(f"  Prompt length: {prompt_length}")
+            print(f"  Total length: {labels.shape[1]}")
+            print(f"  Prompt: '{prompt[:100]}...'")
+            print(f"  Completion: '{example['completion'][:50]}...'")
+        elif idx < 3:
+            print(f"  Valid labels: {valid_labels}")
         
         return {
             "input_ids": inputs["input_ids"].squeeze(),
@@ -119,6 +140,14 @@ def train(
     # Load dataset
     print("Loading dataset...")
     dataset = load_dataset("trl-lib/tldr")
+    
+    # Debug: Check dataset structure
+    print("Debug: Checking dataset structure...")
+    print(f"Dataset keys: {dataset.keys()}")
+    print(f"Train dataset columns: {dataset['train'].column_names}")
+    print(f"First example keys: {dataset['train'][0].keys()}")
+    print(f"First example: {dataset['train'][0]}")
+    print()
     
     # Create train/validation datasets
     train_dataset = dataset["train"].select(range(min(1000, len(dataset["train"]))))
