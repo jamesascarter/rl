@@ -28,10 +28,10 @@ class TLDRDataset(Dataset):
         example = self.dataset[idx]
         
         # Debug: Check for empty or problematic data
-        if not example['text'] or not example['summary']:
+        if not example['prompt'] or not example['completion']:
             print(f"Warning: Empty text or summary at index {idx}")
-            print(f"Text: '{example['text']}'")
-            print(f"Summary: '{example['summary']}'")
+            print(f"Text: '{example['prompt']}'")
+            print(f"Summary: '{example['completion']}'")
         
         # Format prompt
         prompt = f"Summarize the following text:\n\n{example['prompt']}\n\nSummary:"
