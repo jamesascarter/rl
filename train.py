@@ -63,8 +63,8 @@ def train(
     lora_r=16,
     lora_alpha=32,
     lora_dropout=0.1,
-    batch_size=16,  # Increased from 4
-    learning_rate=1e-4,  # Increased from 5e-5
+    batch_size=8,  # Reduced from 16 to be more stable
+    learning_rate=5e-5,  # Reduced from 1e-4 to be more stable
     num_epochs=3,
     max_length=512,
     warmup_steps=100,
@@ -186,9 +186,21 @@ def train(
             outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
             loss = outputs.loss
             
+            # Check for NaN loss
+            if torch.isnan(loss) or torch.isinf(loss):
+                print(f"Warning: NaN/Inf loss detected at step {global_step}")
+                print(f"Loss value: {loss.item()}")
+                print(f"Input shape: {input_ids.shape}")
+                print(f"Labels shape: {labels.shape}")
+                continue  # Skip this batch
+            
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
+            
+            # Gradient clipping to prevent exploding gradients
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
             optimizer.step()
             scheduler.step()
             
@@ -214,26 +226,35 @@ def train(
             # Evaluation
             if global_step % eval_steps == 0:
                 val_loss = evaluate(model, val_loader, device, criterion)
-                wandb.log({
-                    "val_loss": val_loss,
-                    "global_step": global_step
-                })
-                
-                # Save best model
-                if val_loss < best_val_loss:
-                    best_val_loss = val_loss
-                    model.save_lora_weights(f"{output_dir}/best-model")
-                    wandb.log({"best_val_loss": val_loss})
+                if not torch.isnan(torch.tensor(val_loss)):
+                    wandb.log({
+                        "val_loss": val_loss,
+                        "global_step": global_step
+                    })
+                    
+                    # Save best model
+                    if val_loss < best_val_loss:
+                        best_val_loss = val_loss
+                        model.save_lora_weights(f"{output_dir}/best-model")
+                        wandb.log({"best_val_loss": val_loss})
                 
                 model.train()
         
         # Epoch summary
         avg_train_loss = total_loss / len(train_loader)
-        print(f"Epoch {epoch+1} - Avg Train Loss: {avg_train_loss:.4f}")
+        if not torch.isnan(torch.tensor(avg_train_loss)):
+            print(f"Epoch {epoch+1} - Avg Train Loss: {avg_train_loss:.4f}")
+        else:
+            print(f"Epoch {epoch+1} - Avg Train Loss: NaN (training failed)")
+            break
         
         # Final evaluation for epoch
         val_loss = evaluate(model, val_loader, device, criterion)
-        print(f"Epoch {epoch+1} - Val Loss: {val_loss:.4f}")
+        if not torch.isnan(torch.tensor(val_loss)):
+            print(f"Epoch {epoch+1} - Val Loss: {val_loss:.4f}")
+        else:
+            print(f"Epoch {epoch+1} - Val Loss: NaN")
+            break
         
         wandb.log({
             "epoch": epoch + 1,
@@ -275,8 +296,8 @@ def main():
     parser.add_argument("--lora_r", type=int, default=16, help="LoRA rank")
     parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA alpha")
     parser.add_argument("--lora_dropout", type=float, default=0.1, help="LoRA dropout")
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size")  # Increased from 4
-    parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate")  # Increased from 5e-5
+    parser.add_argument("--batch_size", type=int, default=8, help="Batch size")  # Reduced from 16
+    parser.add_argument("--learning_rate", type=float, default=5e-5, help="Learning rate")  # Reduced from 1e-4
     parser.add_argument("--num_epochs", type=int, default=3, help="Number of epochs")
     parser.add_argument("--max_length", type=int, default=512, help="Max sequence length")
     parser.add_argument("--warmup_steps", type=int, default=100, help="Warmup steps")
