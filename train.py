@@ -135,6 +135,7 @@ def train(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
+    first_batch = next(iter(train_loader))
     # Check for valid labels (not all -100)
     valid_labels = (first_batch['labels'] != -100).sum()
     print(f"Valid labels in first batch: {valid_labels}")
