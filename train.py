@@ -134,7 +134,25 @@ def train(
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    
+
+    print("=== DATASET STATISTICS ===")
+    print(f"Full train dataset size: {len(train_dataset):,} examples")
+    print(f"Full validation dataset size: {len(val_dataset):,} examples")
+    print(f"Full test dataset size: {len(test_dataset):,} examples")
+
+    train_size = min(1000, len(dataset["train"]))
+    val_size = min(100, len(dataset["validation"]))
+
+    print(f"=== TRAINING SETUP ===")
+    print(f"Using {train_size:,} training examples ({train_size/len(dataset['train'])*100:.1f}% of full dataset)")
+    print(f"Using {val_size:,} validation examples ({val_size/len(dataset['validation'])*100:.1f}% of full dataset)")
+    print(f"Max sequence length: {max_length} tokens")
+    print(f"Batch size: {batch_size}")
+    print(f"Effective batch size: {batch_size * 2} (with gradient accumulation)")
+    print(f"Steps per epoch: {train_size // batch_size}")
+    print(f"Total training steps: {(train_size // batch_size) * num_epochs}")
+    print()
+
     first_batch = next(iter(train_loader))
     # Check for valid labels (not all -100)
     valid_labels = (first_batch['labels'] != -100).sum()
@@ -168,14 +186,7 @@ def train(
     print(f"Total parameters: {total_params:,}")
     print(f"Trainable parameters: {trainable_params:,}")
     print(f"Trainable percentage: {100 * trainable_params / total_params:.2f}%")
-    
-    # Check for NaN in model parameters
-    for name, param in model.named_parameters():
-        if torch.isnan(param).any():
-            print(f"Warning: NaN found in parameter {name}")
-        if torch.isinf(param).any():
-            print(f"Warning: Inf found in parameter {name}")
-    
+
     # Test GPU computation
     if torch.cuda.is_available():
         test_tensor = torch.randn(2, 2).to(device)
