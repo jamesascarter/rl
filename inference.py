@@ -169,17 +169,10 @@ class QwenInference:
 if __name__ == "__main__":
     # Initialize inference
     inference = QwenInference(model_path="./lora-output/best-model")
-    
-    # Test text generation
-    prompt = "SUBREDDIT: r/relationships TITLE: The girl [26 F] I [22 M] have been seeing for a month didn't respond to me at all yesterday while hanging out with a friend [~30? M]. POST: She gets terrible service while at her house, but I texted her 3 times yesterday, 4-5 hours apart. She didn't call me until early this morning and left a voicemail that she was busy all day with a friend who showed up out of the blue. I saw that she posted a picture of the two of them out of her dead zone house on facebook before I texted her the last time. I don't mind that she hangs out with friends, and I know it's pretty early in the relationship, but am I wrong to be a little annoyed that she didn't respond until 24 hours after my first text? TL;DR:"
-    generated = inference.generate_text(prompt, max_length=50)
-    print(f"Prompt: {prompt}")
-    print(f"Generated: {generated}")
-    print()
-    
+
     # Test summarization
     text = """
-    Girl I'm seeing didn't respond to my texts while hanging out with a friend, what should I do, if anything?
+        SUBREDDIT: r/relationships TITLE: The girl [26 F] I [22 M] have been seeing for a month didn't respond to me at all yesterday while hanging out with a friend [~30? M]. POST: She gets terrible service while at her house, but I texted her 3 times yesterday, 4-5 hours apart. She didn't call me until early this morning and left a voicemail that she was busy all day with a friend who showed up out of the blue. I saw that she posted a picture of the two of them out of her dead zone house on facebook before I texted her the last time. I don't mind that she hangs out with friends, and I know it's pretty early in the relationship, but am I wrong to be a little annoyed that she didn't respond until 24 hours after my first text? TL;DR:
     """
     summary = inference.generate_summary(text)
     print(f"Original text: {text.strip()}")
