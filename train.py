@@ -138,7 +138,6 @@ def train(
     print("=== DATASET STATISTICS ===")
     print(f"Full train dataset size: {len(train_dataset):,} examples")
     print(f"Full validation dataset size: {len(val_dataset):,} examples")
-    print(f"Full test dataset size: {len(test_dataset):,} examples")
 
     train_size = min(1000, len(dataset["train"]))
     val_size = min(100, len(dataset["validation"]))
