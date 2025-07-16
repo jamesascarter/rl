@@ -16,7 +16,7 @@ from models import QwenSftModel
 
 
 class TLDRDataset(Dataset):
-    def __init__(self, dataset, tokenizer, max_length=512):
+    def __init__(self, dataset, tokenizer, max_length=256):
         self.dataset = dataset
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -139,8 +139,8 @@ def train(
     print(f"Full train dataset size: {len(train_dataset):,} examples")
     print(f"Full validation dataset size: {len(val_dataset):,} examples")
 
-    train_size = min(1000, len(dataset["train"]))
-    val_size = min(100, len(dataset["validation"]))
+    train_size = len(dataset["train"])
+    val_size = len(dataset["validation"])
 
     print(f"=== TRAINING SETUP ===")
     print(f"Using {train_size:,} training examples ({train_size/len(dataset['train'])*100:.1f}% of full dataset)")

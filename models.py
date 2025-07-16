@@ -119,3 +119,75 @@ class QwenSftModel(nn.Module):
             "all_params": all_param,
             "trainable_percentage": 100 * trainable_params / all_param
         }
+class RewardModel(nn.Module):
+    def __init__(self, sft_model_path: str = "./lora-output/best-model", model_name: str = "Qwen/Qwen1.5-0.5B"):
+        super().__init__()
+        
+        # Load the trained SFT model with LoRA
+        self.base_model = QwenSftModel(model_name=model_name)
+        self.base_model.load_lora_weights(sft_model_path)
+
+        self.tokenizer = self.base_model.tokenizer
+        self.hidden_size = self.base_model.model.config.hidden_size
+
+        # Freeze ALL parameters in the base model (including LoRA weights)
+        for param in self.base_model.parameters():
+            param.requires_grad = False
+
+        # Reward head: scalar output from last token (only this will be trained)
+        self.reward_head = nn.Linear(self.hidden_size, 1)
+        
+        # Print trainable parameters info
+        print("=== REWARD MODEL PARAMETERS ===")
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        print(f"Total parameters: {total_params:,}")
+        print(f"Trainable parameters: {trainable_params:,}")
+        print(f"Trainable percentage: {100 * trainable_params / total_params:.2f}%")
+        print("Only reward head is trainable!")
+
+    def forward(self, input_ids, attention_mask=None, labels=None):
+        outputs = self.base_model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            output_hidden_states=True,
+            return_dict=True
+        )
+
+        # Get the last hidden layer (batch_size, seq_len, hidden_size)
+        last_hidden_state = outputs.hidden_states[-1]
+
+        # Extract the hidden state of the last non-padding token
+        # Assuming padding is on the left (HuggingFace default for causal models)
+        lengths = attention_mask.sum(dim=1) - 1  # (batch_size,)
+        last_token_hidden = last_hidden_state[range(last_hidden_state.size(0)), lengths]
+
+        # Compute scalar reward
+        rewards = self.reward_head(last_token_hidden).squeeze(-1)  # (batch_size,)
+        return rewards
+    
+    def save_reward_model(self, path: str):
+        """
+        Save the reward head and tokenizer
+        """
+        os.makedirs(path, exist_ok=True)
+        
+        # Save the reward head
+        torch.save(self.reward_head.state_dict(), f"{path}/reward_head.pt")
+        
+        # Save tokenizer
+        self.tokenizer.save_pretrained(path)
+        
+        print(f"Reward head saved to {path}")
+
+    def load_reward_model(self, path: str):
+        """
+        Load the reward head
+        """
+        # Load reward head
+        reward_head_path = f"{path}/reward_head.pt"
+        if os.path.exists(reward_head_path):
+            self.reward_head.load_state_dict(torch.load(reward_head_path))
+            print(f"Reward head loaded from {path}")
+        else:
+            print(f"Warning: No reward head found at {path}")
