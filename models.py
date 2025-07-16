@@ -124,11 +124,18 @@ class RewardModel(nn.Module):
         super().__init__()
         
         # Load the trained SFT model with LoRA
-        self.base_model = QwenSftModel(model_name=model_name)
-        self.base_model.load_lora_weights(sft_model_path)
-
+         self.base_model = AutoModelForCausalLM.from_pretrained(
+            model_name, 
+            output_hidden_states=True
+        )
         self.tokenizer = self.base_model.tokenizer
         self.hidden_size = self.base_model.model.config.hidden_size
+
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        # Load LoRA weights directly (not through QwenSftModel)
+        self.base_model = PeftModel.from_pretrained(self.base_model, sft_model_path)
 
         # Freeze ALL parameters in the base model (including LoRA weights)
         for param in self.base_model.parameters():
