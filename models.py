@@ -124,7 +124,7 @@ class RewardModel(nn.Module):
         super().__init__()
         
         # Load the trained SFT model with LoRA
-         self.base_model = AutoModelForCausalLM.from_pretrained(
+        self.base_model = AutoModelForCausalLM.from_pretrained(
             model_name, 
             output_hidden_states=True
         )
