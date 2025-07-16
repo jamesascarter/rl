@@ -147,7 +147,7 @@ class RewardModel(nn.Module):
         print("Only reward head is trainable!")
 
     def forward(self, input_ids, attention_mask=None, labels=None):
-        outputs = self.base_model(
+        outputs = self.base_model.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
             output_hidden_states=True,
