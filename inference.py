@@ -57,6 +57,9 @@ def generate_summary(text: str, lora_path: str = "./lora-output/best-model") -> 
     # Decode and extract summary
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     summary = generated_text.split("Summary:")[-1].strip()
+    # Remove EOS token if present
+    if tokenizer.eos_token in summary:
+        summary = summary.replace(tokenizer.eos_token, "").strip()
     
     return summary
 

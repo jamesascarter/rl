@@ -29,9 +29,9 @@ class TLDRDataset(Dataset):
         
         # Format prompt
         prompt = f"Summarize the following text:\n\n{example['prompt']}\n\nSummary:"
-        
+        completion = example['completion'] + self.tokenizer.eos_token
         # Tokenize the full text (prompt + completion)
-        full_text = prompt + example['completion']
+        full_text = prompt + completion
         inputs = self.tokenizer(
             full_text,
             truncation=True,

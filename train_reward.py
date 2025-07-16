@@ -25,8 +25,8 @@ class ContrastiveDataset(Dataset):
         chosen = example['chosen']
         rejected = example['rejected']
 
-        chosen_text = f"Summarize the following text:\n\n{prompt}\n\nSummary: {chosen}"
-        rejected_text = f"Summarize the following text:\n\n{prompt}\n\nSummary: {rejected}"
+        chosen_text = f"Summarize the following text:\n\n{prompt}\n\nSummary: {chosen}{self.tokenizer.eos_token}"
+        rejected_text = f"Summarize the following text:\n\n{prompt}\n\nSummary: {rejected}{self.tokenizer.eos_token}"
 
         chosen_tokens = self.tokenizer(
             chosen_text,
