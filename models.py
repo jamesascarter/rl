@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
+import os
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import LoraConfig, get_peft_model, TaskType, PeftModel
-
 
 class QwenSftModel(nn.Module):
     def __init__(
