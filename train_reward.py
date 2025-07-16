@@ -105,7 +105,7 @@ def train_preference(
     
     # Create train/validation datasets
     train_dataset = dataset["train"].select(range(min(100, len(dataset["train"]))))
-    val_dataset = dataset["validation"].select(range(min(20, len(dataset["validation"]))))
+    val_dataset = dataset["valid1"].select(range(min(20, len(dataset["valid1"]))))
 
     # Debug: Check dataset structure
     print("Debug: Checking dataset structure...")
