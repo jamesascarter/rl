@@ -52,8 +52,6 @@ print("Initialized PeftModel with SFT adapter as 'sft'.")
 
 # 3. Load the additional adapters into the existing PeftModel
 # Load the reward adapter and name it 'reward'
-policy_model.load_adapter(REWARD_ADAPTER_PATH, adapter_name="reward")
-print("Loaded adapter 'reward'.")
 
 # Load the SFT weights again, but this time give them the new name 'policy'
 # This creates our trainable policy adapter, initialized from the SFT checkpoint.
