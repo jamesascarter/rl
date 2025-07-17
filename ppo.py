@@ -65,7 +65,12 @@ policy_model.to(DEVICE)
 
 # 4. Define and instantiate the RewardModel wrapper
 # It will use the SAME underlying model but with a specific head
-reward_model = RewardModel(policy_model).to(DEVICE)
+reward_model = RewardModel(sft_model_path=SFT_ADAPTER_PATH, model_name=MODEL_NAME)
+reward_model.load_reward_model(REWARD_ADAPTER_PATH)
+reward_model.to(DEVICE)
+reward_model.eval()
+
+optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, policy_model.parameters()), lr=1e-5)
 
 # Also load the reward head
 head_weights_path = os.path.join(REWARD_ADAPTER_PATH, "reward_head.pt")
@@ -76,7 +81,6 @@ print(f"✅ Loaded reward head weights from: {head_weights_path}")
 reward_model.eval()
 
 # Update the optimizer to target only the 'policy' adapter's parameters
-optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, policy_model.parameters()), lr=1e-5)
 
 # Load dataset
 dataset = load_dataset(DATASET_NAME, split="train")
