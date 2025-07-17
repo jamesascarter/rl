@@ -159,7 +159,6 @@ class RewardModel(nn.Module):
         print(f"Total parameters: {total_params:,}")
         print(f"Trainable parameters: {trainable_params:,}")
         print(f"Trainable percentage: {100 * trainable_params / total_params:.2f}%")
-        print("Only reward head is trainable!")
 
     def forward(self, input_ids, attention_mask=None, labels=None):
         outputs = self.base_model.model(

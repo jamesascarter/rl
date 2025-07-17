@@ -70,14 +70,6 @@ reward_model.eval()
 
 optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, policy_model.parameters()), lr=1e-5)
 
-# Also load the reward head
-head_weights_path = os.path.join(REWARD_ADAPTER_PATH, "reward_head.pt")
-state_dict = torch.load(head_weights_path, map_location=DEVICE)
-reward_model.reward_head.load_state_dict(state_dict)
-print(f"✅ Loaded reward head weights from: {head_weights_path}")
-
-reward_model.eval()
-
 # Update the optimizer to target only the 'policy' adapter's parameters
 
 # Load dataset
@@ -150,7 +142,6 @@ for epoch in range(EPOCHS):
     loop = tqdm(loader)
     for batch in loop:
         try:
-
             input_ids = batch["input_ids"].to(DEVICE)
             attention_mask = batch["attention_mask"].to(DEVICE)
 
@@ -185,10 +176,8 @@ for epoch in range(EPOCHS):
             full_attention_mask = torch.ones_like(full_ids).to(DEVICE)
 
             # === 2) Reward ===
-            # Set the active adapter to 'reward' for scoring
-            policy_model.set_adapter("reward")
+            # Use the separate reward model (no adapter switching needed)
             with torch.no_grad():
-                # The reward_model uses the policy_model internally, which now has the 'reward' adapter active
                 reward = reward_model(full_ids, full_attention_mask).detach()
 
             # Normalize rewards for stability
