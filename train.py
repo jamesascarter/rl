@@ -124,7 +124,7 @@ def train(
     print()
     
     # Create train/validation datasets
-    train_dataset = dataset["train"]
+    train_dataset = dataset["train"].select(range(min(20000, len(dataset["train"]))))
     val_dataset = dataset["validation"]
     
     # Create PyTorch datasets
