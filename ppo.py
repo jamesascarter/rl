@@ -179,6 +179,10 @@ for epoch in range(EPOCHS):
             # Use the separate reward model (no adapter switching needed)
             with torch.no_grad():
                 reward = reward_model(full_ids, full_attention_mask).detach()
+                
+                # Get value estimates (if you have a value head)
+                # For now, use a simple baseline
+                value_estimates = reward.mean() * torch.ones_like(reward)  # Simple baseline
 
             # Normalize rewards for stability
             reward = (reward - reward.mean()) / (reward.std() + 1e-8)
@@ -216,7 +220,10 @@ for epoch in range(EPOCHS):
                 last_hidden_state = policy_model.model.get_input_embeddings()(input_ids)
                 value_estimates = value_head(last_hidden_state)
 
-            advantage = reward - value_estimates
+            # Extract the value estimate for the last token of each sequence
+            lengths = full_attention_mask.sum(dim=1) - 1
+            last_token_values = value_estimates[torch.arange(value_estimates.size(0)), lengths]
+            advantage = reward - last_token_values
 
             # === 4) PPO update ===
             # Set the adapter back to 'policy' for the training step
