@@ -19,3 +19,4 @@ fsspec>=2023.9.0
 typing-extensions>=4.8.0
 wandb>=0.15.0 
 argparse
+trl
