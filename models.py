@@ -141,9 +141,13 @@ class RewardModel(nn.Module):
         # Load LoRA weights directly
         self.base_model = PeftModel.from_pretrained(self.base_model, sft_model_path)
 
-        # Freeze ALL parameters in the base model (including LoRA weights)
-        for param in self.base_model.parameters():
-            param.requires_grad = False
+        # Freeze base model parameters but UNFREEZE LoRA parameters
+        for name, param in self.base_model.named_parameters():
+            if 'lora' in name.lower():  # Unfreeze LoRA parameters
+                param.requires_grad = True
+                print(f"Unfrozen LoRA param: {name}")
+            else:  # Freeze base model parameters
+                param.requires_grad = False
 
         # Reward head: scalar output from last token (only this will be trained)
         self.reward_head = nn.Linear(self.hidden_size, 1)
