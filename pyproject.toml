@@ -1,0 +1,21 @@
+# Create a basic pyproject.toml
+cat > pyproject.toml << EOF
+[project]
+name = "rl-training"
+version = "0.1.0"
+description = "RL training project"
+requires-python = ">=3.8"
+dependencies = [
+    "torch",
+    "transformers",
+    "peft",
+    "datasets",
+    "wandb",
+    "tqdm",
+    "accelerate"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+EOF

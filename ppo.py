@@ -75,6 +75,42 @@ optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, policy_model.par
 # Load dataset
 dataset = load_dataset(DATASET_NAME, split="train")
 
+# Use running statistics for normalization
+class RunningStats:
+    def __init__(self):
+        self.mean = 0.0
+        self.var = 1.0
+        self.count = 0
+    
+    def update(self, x):
+        batch_mean = x.mean()
+        batch_var = x.var()
+        batch_count = x.numel()
+        
+        delta = batch_mean - self.mean
+        self.mean += delta * batch_count / (self.count + batch_count)
+        self.var = (self.var * self.count + batch_var * batch_count + 
+                   delta * delta * self.count * batch_count / (self.count + batch_count)) / (self.count + batch_count)
+        self.count += batch_count
+    
+    def normalize(self, x):
+        return (x - self.mean) / (self.var.sqrt() + 1e-8)
+
+reward_stats = RunningStats()
+
+# Add value function loss
+class ValueHead(nn.Module):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.value_head = nn.Linear(hidden_size, 1)
+    
+    def forward(self, hidden_states):
+        return self.value_head(hidden_states).squeeze(-1)
+
+# Initialize once at the top
+value_head = ValueHead(policy_model.model.config.hidden_size).to(DEVICE)
+value_optimizer = torch.optim.AdamW(value_head.parameters(), lr=1e-4)
+
 # Filter + preprocess in one go
 def preprocess_function(ex):
     if not ex["prompt"].strip().endswith("\nTL;DR:"):
@@ -100,7 +136,14 @@ def collate_fn(batch):
     input_ids = [ex["input_ids"] for ex in batch]
     attention_masks = [ex["attention_mask"] for ex in batch]
 
-    # Left pad: pad_sequence defaults to right, so reverse → pad → reverse again
+    # Ensure all sequences are within bounds
+    max_len = min(MAX_LEN, max(len(ids) for ids in input_ids))
+    
+    # Truncate if necessary
+    input_ids = [ids[:max_len] for ids in input_ids]
+    attention_masks = [mask[:max_len] for mask in attention_masks]
+
+    # Left pad safely
     input_ids = [torch.flip(x, dims=[0]) for x in input_ids]
     input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
     input_ids = torch.flip(input_ids, dims=[1])
@@ -137,6 +180,23 @@ def compute_advantages(rewards, gamma=0.99, gae_lambda=0.95):
         advantages.insert(0, gae)
     
     return torch.tensor(advantages, device=rewards.device)
+
+# Add this helper function at the top
+def safe_get_last_token_values(value_estimates, attention_mask):
+    """Safely extract last token values without index errors"""
+    batch_size, seq_len, hidden_size = value_estimates.shape
+    
+    # Calculate lengths safely
+    lengths = attention_mask.sum(dim=1) - 1
+    lengths = torch.clamp(lengths, 0, seq_len - 1)  # Ensure valid indices
+    
+    # Create batch indices
+    batch_indices = torch.arange(batch_size, device=value_estimates.device)
+    
+    # Extract last token values
+    last_token_values = value_estimates[batch_indices, lengths]
+    
+    return last_token_values
 
 for epoch in range(EPOCHS):
     loop = tqdm(loader)
@@ -176,16 +236,25 @@ for epoch in range(EPOCHS):
             full_attention_mask = torch.ones_like(full_ids).to(DEVICE)
 
             # === 2) Reward ===
-            # Use the separate reward model (no adapter switching needed)
             with torch.no_grad():
                 reward = reward_model(full_ids, full_attention_mask).detach()
                 
-                # Get value estimates (if you have a value head)
-                # For now, use a simple baseline
-                value_estimates = reward.mean() * torch.ones_like(reward)  # Simple baseline
+                # Get value estimates
+                outputs = policy_model(
+                    input_ids=full_ids, 
+                    attention_mask=full_attention_mask,
+                    output_hidden_states=True
+                )
+                hidden_states = outputs.hidden_states[-1]
+                value_estimates = value_head(hidden_states)
+                
+                # Safe indexing
+                last_token_values = safe_get_last_token_values(value_estimates, full_attention_mask)
+                advantage = reward - last_token_values
 
             # Normalize rewards for stability
-            reward = (reward - reward.mean()) / (reward.std() + 1e-8)
+            reward_stats.update(reward)
+            reward = reward_stats.normalize(reward)
 
             # === 3) Compute old log probs ===
             # Set the active adapter to 'sft' (our fixed reference)
@@ -206,19 +275,12 @@ for epoch in range(EPOCHS):
                 old_logprobs = old_logprobs_per_token.view(old_labels.shape).sum(dim=1)
 
             # Add a value head to your model
-            class ValueHead(nn.Module):
-                def __init__(self, hidden_size):
-                    super().__init__()
-                    self.value_head = nn.Linear(hidden_size, 1)
-                
-                def forward(self, hidden_states):
-                    return self.value_head(hidden_states).squeeze(-1)
 
-            # Compute value estimates for better advantage
-            value_head = ValueHead(policy_model.model.config.hidden_size).to(DEVICE)
+            # Get actual hidden states from the model
             with torch.no_grad():
-                last_hidden_state = policy_model.model.get_input_embeddings()(input_ids)
-                value_estimates = value_head(last_hidden_state)
+                outputs = policy_model(input_ids=input_ids, attention_mask=attention_mask)
+                hidden_states = outputs.hidden_states[-1]  # Last layer
+                value_estimates = value_head(hidden_states)
 
             # Extract the value estimate for the last token of each sequence
             lengths = full_attention_mask.sum(dim=1) - 1
@@ -260,11 +322,16 @@ for epoch in range(EPOCHS):
                         print(f"KL divergence {kl_div:.4f} > 0.1, stopping PPO updates")
                         break
 
-                # The backward pass will now correctly only affect 'policy' adapter weights
+                # Add value function loss
+                value_loss = F.mse_loss(value_estimates, reward.unsqueeze(-1))
+                total_loss = ppo_loss + 0.5 * value_loss
+
+                # Update both policy and value function
                 optimizer.zero_grad()
-                ppo_loss.backward()
-                torch.nn.utils.clip_grad_norm_(policy_model.parameters(), max_norm=1.0)
+                value_optimizer.zero_grad()
+                total_loss.backward()
                 optimizer.step()
+                value_optimizer.step()
 
                 running_loss += ppo_loss.item()
 
